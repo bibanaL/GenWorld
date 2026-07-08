@@ -16,7 +16,10 @@ from app.schemas.action import (
     ContextPack,
     PlayerActionRequest,
 )
-from app.services.event_queue_service import process_event_queue
+from app.services.event_queue_service import (
+    preflight_event_queue_after_operations,
+    process_event_queue,
+)
 from app.storage.sqlite_store import SQLiteLedger
 
 
@@ -118,6 +121,10 @@ class PlayerActionGraphRunner:
 
     def _commit_state(self, state: PlayerActionGraphState) -> dict[str, Any]:
         outcome = state["outcome"]
+        preflight_event_queue_after_operations(
+            world_state=state["world"]["state"],
+            operations=outcome.operations,
+        )
         patch = self.ledger.apply_state_patch(
             world_id=state["world_id"],
             reason=f"Player action: {state['action_text']}",

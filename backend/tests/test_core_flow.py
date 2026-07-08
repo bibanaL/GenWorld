@@ -309,6 +309,109 @@ class CoreFlowTestCase(unittest.TestCase):
         state = self.client.get(f"/worlds/{world['id']}").json()["state"]
         self.assertNotIn(queued_event["id"], [event["id"] for event in state["event_queue"]])
 
+    def test_triggered_queued_event_applies_effects(self) -> None:
+        world = self._generate_world(seed=512)
+        queued_event = world["state"]["event_queue"][0]
+        clock_id = queued_event["trigger"]["clock_id"]
+        location_effect = next(
+            effect
+            for effect in queued_event["effects"]
+            if effect["path"].startswith("/locations/")
+            and effect["path"].endswith("/danger_level")
+        )
+        location_id = location_effect["path"].split("/")[2]
+        fact_effect = next(
+            effect
+            for effect in queued_event["effects"]
+            if effect["path"].startswith("/facts/")
+        )
+        fact_id = fact_effect["value"]["id"]
+        danger_before = world["state"]["locations"][location_id]["danger_level"]
+
+        self._apply_patch(
+            world_id=world["id"],
+            operations=[{"op": "set", "path": f"/clocks/{clock_id}/progress", "value": 74}],
+        )
+
+        response = self.client.post(
+            f"/worlds/{world['id']}/advance",
+            json={
+                "reason": "Trigger event effects.",
+                "risk_level": "low",
+                "advance_time": False,
+                "clock_limit": 1,
+                "tick_faction_plans": False,
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        triggered_event = response.json()["triggered_events"][0]
+        self.assertEqual(triggered_event["payload"]["effects_count"], len(queued_event["effects"]))
+
+        state = self.client.get(f"/worlds/{world['id']}").json()["state"]
+        location = state["locations"][location_id]
+        self.assertEqual(location["danger_level"], danger_before + location_effect["value"])
+        self.assertIn(queued_event["id"], location["active_events"])
+        self.assertTrue(
+            any(fact["id"] == fact_id for fact in state["facts"]["player_known"])
+        )
+
+        patches = self.client.get(f"/worlds/{world['id']}/patches").json()
+        event_patch = patches[-1]
+        self.assertEqual(event_patch["source_agent"], "event_queue.local")
+        self.assertEqual(event_patch["status"], "applied")
+        self.assertGreater(len(event_patch["operations"]), 1)
+
+    def test_invalid_queued_event_effect_is_rejected_and_kept(self) -> None:
+        world = self._generate_world(seed=513)
+        clock_id = next(iter(world["state"]["clocks"]))
+        bad_event = {
+            "id": "queued_bad_player_mutation",
+            "type": "clock_threshold",
+            "summary": "A bad event tries to directly rewrite the player.",
+            "trigger": {"clock_id": clock_id, "progress_at_least": 1},
+            "earliest_day": 1,
+            "latest_day": 2,
+            "priority": 90,
+            "visibility": "hidden",
+            "payload": {},
+            "effects": [
+                {
+                    "op": "set",
+                    "path": "/player/condition/health",
+                    "value": 1,
+                    "note": "This effect should be rejected.",
+                }
+            ],
+        }
+
+        self._apply_patch(
+            world_id=world["id"],
+            operations=[
+                {"op": "set", "path": f"/clocks/{clock_id}/progress", "value": 1},
+                {"op": "append", "path": "/event_queue", "value": bad_event},
+            ],
+        )
+        state_before = self.client.get(f"/worlds/{world['id']}").json()["state"]
+
+        response = self.client.post(
+            f"/worlds/{world['id']}/advance",
+            json={
+                "reason": "Reject invalid event effect.",
+                "advance_time": True,
+                "clock_limit": 0,
+                "tick_faction_plans": False,
+            },
+        )
+
+        self.assertEqual(response.status_code, 422)
+        self.assertIn("outside allowed paths", response.json()["detail"])
+
+        state = self.client.get(f"/worlds/{world['id']}").json()["state"]
+        self.assertEqual(state["time"], state_before["time"])
+        self.assertIn(bad_event["id"], [event["id"] for event in state["event_queue"]])
+        self.assertEqual(state["player"]["condition"]["health"], 100)
+
     def test_overdue_queued_clock_event_still_triggers(self) -> None:
         world = self._generate_world(seed=506)
         queued_event = world["state"]["event_queue"][0]

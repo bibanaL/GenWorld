@@ -231,6 +231,11 @@ Queued event fields:
 - `priority`
 - `visibility`
 - `payload`
+- `effects`
+
+`effects` is a small list of Patch DSL operations that run only when the queued event triggers.
+
+Queued event effects are intentionally narrower than general patches. They can change world pressure, locations, factions, entities, facts, and future queued events. They cannot directly rewrite the player, time, premise, seed, or schema version.
 
 ## Extensibility
 
@@ -256,4 +261,3 @@ The following are still separate systems:
 - Mechanic DSL.
 - Agent context-pack construction.
 - Long-term memory and retrieval.
-

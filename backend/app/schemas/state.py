@@ -2,6 +2,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.schemas.patch import PatchOperation
+
 
 Visibility = Literal["public", "player_known", "hidden", "faction_known"]
 
@@ -159,6 +161,7 @@ class QueuedEvent(ExtensibleModel):
     priority: int = Field(default=50, ge=0, le=100)
     visibility: Visibility = "hidden"
     payload: dict[str, Any] = Field(default_factory=dict)
+    effects: list[PatchOperation] = Field(default_factory=list, max_length=12)
 
 
 class WorldState(ExtensibleModel):

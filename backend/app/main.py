@@ -19,7 +19,10 @@ from app.schemas.simulation import (
 )
 from app.schemas.world import WorldCreateRequest, WorldRecord, WorldSummary
 from app.services.daily_settlement_service import settle_day
-from app.services.event_queue_service import process_event_queue
+from app.services.event_queue_service import (
+    preflight_event_queue_after_operations,
+    process_event_queue,
+)
 from app.storage.sqlite_store import SQLiteLedger, StatePatchRejected
 
 
@@ -149,6 +152,10 @@ def advance_world(
         raise HTTPException(status_code=422, detail="No simulation operations were produced.")
 
     try:
+        preflight_event_queue_after_operations(
+            world_state=world["state"],
+            operations=operations,
+        )
         patch = store.apply_state_patch(
             world_id=world_id,
             reason=request.reason,

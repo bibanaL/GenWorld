@@ -5,7 +5,11 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 from app.engine.daily_settlement import build_daily_settlement_operations
-from app.services.event_queue_service import EventQueueProcessingResult, process_event_queue
+from app.services.event_queue_service import (
+    EventQueueProcessingResult,
+    preflight_event_queue_after_operations,
+    process_event_queue,
+)
 from app.storage.sqlite_store import SQLiteLedger
 
 
@@ -34,6 +38,10 @@ def settle_day(
         world["state"],
         tick_faction_plans=tick_faction_plans,
         faction_plan_limit=faction_plan_limit,
+    )
+    preflight_event_queue_after_operations(
+        world_state=world["state"],
+        operations=operations,
     )
 
     settlement_patch = ledger.apply_state_patch(
@@ -74,4 +82,3 @@ def settle_day(
         settled_day=settled_day,
         new_day=new_day,
     )
-

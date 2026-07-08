@@ -10,6 +10,7 @@ It is separate from the player action graph so that world movement does not beco
 backend/app/engine/time.py
 backend/app/engine/simulator.py
 backend/app/engine/event_queue.py
+backend/app/engine/event_effects.py
 backend/app/engine/faction_plans.py
 backend/app/engine/daily_settlement.py
 backend/app/services/event_queue_service.py
@@ -31,6 +32,14 @@ backend/app/services/daily_settlement_service.py
 
 - Detects queued events whose trigger conditions are satisfied.
 - Produces removal patch operations for triggered queue items.
+- Adds validated queued-event effect operations to the same patch batch.
+- Does not commit state directly.
+
+`event_effects.py`
+
+- Validates the narrower effect surface available to queued events.
+- Converts queued event `effects` into Patch DSL operations.
+- Rejects effects that try to directly rewrite the player, time, premise, seed, schema version, or arbitrary roots.
 - Does not commit state directly.
 
 `faction_plans.py`
@@ -56,7 +65,8 @@ backend/app/services/daily_settlement_service.py
 `event_queue_service.py`
 
 - Coordinates event queue processing with the ledger.
-- Applies queue-removal patches.
+- Preflights event queue effects before the parent action or simulation patch commits.
+- Applies queue-removal and event-effect patches.
 - Appends `queued_event_triggered` records to the event log.
 
 ## API
@@ -147,6 +157,7 @@ Faction plan rules:
 - When plan progress reaches 100, the plan status becomes `completed`.
 - Completed plans create a follow-up queued event.
 - Follow-up events are delayed: earliest trigger day is the next world day.
+- Follow-up events can apply narrow world consequences through queued event effects.
 - Follow-up events do not directly harm the player or rewrite relationships yet.
 
 In gameplay terms:
@@ -199,6 +210,38 @@ Trigger rules:
 
 Triggered queued events are removed from `/event_queue` through Patch DSL.
 
+If a queued event has `effects`, those effects are validated and applied in the same patch batch that removes the queue item.
+
+In gameplay terms:
+
+```text
+clock or faction trigger becomes true
+-> queued event is selected
+-> event effects are validated
+-> event is removed from event_queue
+-> allowed effects change the world
+-> queued_event_triggered is written to the event log
+```
+
+Allowed first-version effects are deliberately narrow:
+
+- Clock progress changes.
+- Location danger, control, active events, traits, and metadata.
+- Faction resources, goals, known facts, controlled locations, plan progress/status, traits, and metadata.
+- Entity statuses, condition, resources, current location, traits, properties, and metadata.
+- Fact appends.
+- New delayed event appends.
+
+Not allowed:
+
+- Direct player mutation.
+- Direct time mutation.
+- Premise, seed, or schema-version mutation.
+- Removing world objects from event effects.
+- Arbitrary paths outside the allowed effect surface.
+
+Before a player action, world advance, or daily settlement commits, the service previews the resulting world state and checks triggered queued-event effects. If this preflight fails, the parent patch is not committed. This prevents a half-success state where time advances but the triggered event fails.
+
 The event log receives:
 
 ```text
@@ -213,6 +256,7 @@ The payload includes:
 - `clock`
 - `overdue`
 - `scheduled_window`
+- `effects_count`
 
 ## File Size And Coupling Rule
 
@@ -232,4 +276,3 @@ Likely next modules:
 
 - `engine/dice.py`
 - `engine/mechanics.py`
-- `engine/daily_settlement.py`

@@ -63,7 +63,7 @@ Current implementation modules:
 - `engine/context_builder.py`: selects relevant state for the action.
 - `engine/action_resolver.py`: converts intent and context into Patch DSL operations.
 - `engine/simulator.py`: adds background time, clock advancement, and faction plan ticks.
-- `services/event_queue_service.py`: processes triggered queued events after state commit.
+- `services/event_queue_service.py`: preflights triggered queued-event effects, then processes triggered events after state commit.
 - `agents/narrator.py`: renders a simple result string from committed facts.
 
 The graph should orchestrate these modules, not absorb their logic.
@@ -94,7 +94,9 @@ action graph
 -> event log
 ```
 
-After the action patch commits, the graph processes `event_queue` against the latest world state. Triggered queued events are removed through a second patch and written as `queued_event_triggered` event records.
+Before the action patch commits, the graph previews the resulting world state and checks whether triggered queued events have legal effects.
+
+After the action patch commits, the graph processes `event_queue` against the latest world state. Triggered queued events are removed through a second patch, legal event effects are applied through the same patch, and `queued_event_triggered` records are written.
 
 ## Current Behavior
 

@@ -131,6 +131,7 @@ def _plan_completed_queued_event(
     event_id = _plan_completed_event_id(faction_id=faction_id, plan_id=plan_id)
     faction_name = faction.get("name", faction_id)
     plan_summary = plan.get("summary", plan_id)
+    fact_id = f"fact_{event_id}"
     return {
         "id": event_id,
         "type": "faction_plan_followup",
@@ -153,6 +154,32 @@ def _plan_completed_queued_event(
             "target_entity_ids": plan.get("target_entity_ids", []),
             "target_location_ids": plan.get("target_location_ids", []),
         },
+        "effects": [
+            {
+                "op": "increase",
+                "path": f"/factions/{faction_id}/resources/influence",
+                "value": 2,
+                "note": "Completed plan gives its faction a small influence gain.",
+            },
+            {
+                "op": "append",
+                "path": "/facts/hidden",
+                "value": {
+                    "id": fact_id,
+                    "text": f"{faction_name} has turned a completed plan into new leverage.",
+                    "visibility": "hidden",
+                    "known_by": [faction_id],
+                    "tags": ["faction_plan", "followup"],
+                },
+                "note": "Record hidden consequence of a completed faction plan.",
+            },
+            {
+                "op": "append",
+                "path": f"/factions/{faction_id}/known_facts",
+                "value": fact_id,
+                "note": "Faction records the hidden consequence it caused.",
+            },
+        ],
     }
 
 

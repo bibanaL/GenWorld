@@ -2,6 +2,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from app.schemas.patch import PatchOperation
 from app.schemas.state import EntityKind, Visibility
 from app.schemas.world import WorldRecord
 
@@ -79,6 +80,7 @@ class SeedQueuedEvent(BaseModel):
     priority: int = Field(default=50, ge=0, le=100)
     visibility: Visibility = "hidden"
     payload: dict = Field(default_factory=dict)
+    effects: list[PatchOperation] = Field(default_factory=list, max_length=12)
 
 
 class WorldSeed(BaseModel):

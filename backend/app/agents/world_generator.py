@@ -33,7 +33,7 @@ class LocalWorldSeedGenerator:
             locations,
             clocks,
         )
-        queued_events = _generate_queued_events(theme, clocks)
+        queued_events = _generate_queued_events(theme, clocks, locations)
 
         return WorldSeed(
             premise=request.premise,
@@ -281,12 +281,48 @@ def _generate_facts(
 def _generate_queued_events(
     theme: str,
     clocks: list[SeedClock],
+    locations: list[SeedLocation],
 ) -> list[SeedQueuedEvent]:
     events = []
     for index, clock in enumerate(clocks[:2], start=1):
+        event_id = f"queued_{clock.id}"
+        location = locations[(index - 1) % len(locations)] if locations else None
+        fact_visibility = "player_known" if clock.visibility == "player_known" else "hidden"
+        effects = [
+            {
+                "op": "append",
+                "path": f"/facts/{fact_visibility}",
+                "value": {
+                    "id": f"fact_triggered_{clock.id}",
+                    "text": f"{clock.name} changed the pressure around {theme}.",
+                    "visibility": fact_visibility,
+                    "known_by": ["player"] if fact_visibility == "player_known" else [],
+                    "tags": ["queued_event", clock.id],
+                },
+                "note": "Record a fact created by a queued event.",
+            }
+        ]
+        if location is not None:
+            effects.extend(
+                [
+                    {
+                        "op": "increase",
+                        "path": f"/locations/{location.id}/danger_level",
+                        "value": 5 + index,
+                        "note": "Queued event changes location danger.",
+                    },
+                    {
+                        "op": "append",
+                        "path": f"/locations/{location.id}/active_events",
+                        "value": event_id,
+                        "note": "Mark the event as active at the location.",
+                    },
+                ]
+            )
+
         events.append(
             SeedQueuedEvent(
-                id=f"queued_{clock.id}",
+                id=event_id,
                 type="clock_threshold",
                 summary=f"{clock.name} may change the situation in {theme}.",
                 trigger={"clock_id": clock.id, "progress_at_least": 75},
@@ -295,6 +331,7 @@ def _generate_queued_events(
                 priority=60 + index * 5,
                 visibility=clock.visibility,
                 payload={"trigger_event": clock.trigger_event},
+                effects=effects,
             )
         )
     return events

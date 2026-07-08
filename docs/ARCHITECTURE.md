@@ -66,6 +66,7 @@ Current modules:
 - `auditor.py`
 - `context_builder.py`
 - `daily_settlement.py`
+- `event_effects.py`
 - `event_queue.py`
 - `faction_plans.py`
 - `patches.py`

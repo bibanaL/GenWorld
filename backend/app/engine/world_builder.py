@@ -119,6 +119,7 @@ def build_world_state_from_seed(
             priority=event.priority,
             visibility=event.visibility,
             payload=event.payload,
+            effects=event.effects,
         )
         for event in seed.queued_events
     ]

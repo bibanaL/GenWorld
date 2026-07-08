@@ -650,12 +650,19 @@ Required before vector database.
 
 ## Current Recommended Next Step
 
-Build Phase 0 and Phase 1 first:
+Current status:
 
-1. Initialize the repository.
-2. Create the Python backend skeleton.
-3. Add FastAPI, LangGraph, Pydantic, and a local SQLite ledger.
-4. Implement world creation without complex simulation.
-5. Verify that state patches and event logs are auditable.
+- Phase 0 repository and environment baseline: complete.
+- Phase 1 core world ledger: complete for the local MVP.
+- Phase 2 world generation MVP: local deterministic generator complete; LLM generation is not connected yet.
+- Phase 3 LangGraph player action loop: basic local loop complete.
+- Phase 4 world simulation loop: in progress. Time advancement, daily settlement, faction plans, event queue triggering, delayed plan follow-ups, and narrow queued-event effects are implemented.
 
-The first real milestone is not beautiful storytelling. The first real milestone is a world state that can survive repeated actions without becoming inconsistent.
+Recommended next work:
+
+1. Run Gate A: continue one generated world for 20 player actions and fix any state inconsistency.
+2. Run Gate B: simulate one world for 7 in-world days and verify that faction plans, clocks, triggered events, and event effects create readable causes in the event log.
+3. Add a small debug endpoint or view for clocks, faction plans, and pending queued events if manual inspection becomes painful.
+4. Only after Gate A and Gate B are stable, start Phase 5 mechanic DSL.
+
+Do not connect LLM generation, vector retrieval, or a larger frontend until the local world loop can survive repeated play without hidden state contradictions.

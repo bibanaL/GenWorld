@@ -4,6 +4,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from app.engine.event_effects import build_event_effect_operations
 from app.schemas.patch import PatchOperation
 
 
@@ -26,7 +27,7 @@ def build_event_queue_processing_plan(world_state: dict[str, Any]) -> EventQueue
     factions = world_state.get("factions", {})
     event_queue = world_state.get("event_queue", [])
 
-    triggered: list[tuple[int, TriggeredQueuedEvent]] = []
+    triggered: list[tuple[int, dict[str, Any], TriggeredQueuedEvent]] = []
     for index, queued_event in enumerate(event_queue):
         triggered_event = _maybe_trigger_event(
             queued_event=queued_event,
@@ -35,20 +36,25 @@ def build_event_queue_processing_plan(world_state: dict[str, Any]) -> EventQueue
             current_day=current_day,
         )
         if triggered_event is not None:
-            triggered.append((index, triggered_event))
+            triggered.append((index, queued_event, triggered_event))
 
-    operations = [
+    remove_operations = [
         PatchOperation(
             op="remove",
             path=f"/event_queue/{index}",
             note="Remove triggered queued event.",
         )
-        for index, _ in sorted(triggered, key=lambda item: item[0], reverse=True)
+        for index, _, _ in sorted(triggered, key=lambda item: item[0], reverse=True)
+    ]
+    effect_operations = [
+        operation
+        for _, queued_event, _ in triggered
+        for operation in build_event_effect_operations(queued_event)
     ]
 
     return EventQueueProcessingPlan(
-        operations=operations,
-        triggered_events=[event for _, event in triggered],
+        operations=remove_operations + effect_operations,
+        triggered_events=[event for _, _, event in triggered],
     )
 
 
@@ -106,6 +112,7 @@ def _maybe_trigger_event(
             },
             "overdue": overdue,
             "scheduled_window": scheduled_window,
+            "effects_count": len(queued_event.get("effects") or []),
         }
     )
 
@@ -161,6 +168,7 @@ def _maybe_trigger_plan_completed_event(
             },
             "overdue": overdue,
             "scheduled_window": scheduled_window,
+            "effects_count": len(queued_event.get("effects") or []),
         }
     )
 
