@@ -1,5 +1,12 @@
 # State Patch DSL
 
+Status: current prototype mutation contract and retained architectural boundary.
+
+Patch-based mutation remains part of the target product. Milestone 1 in
+`ROADMAP.md` adds complete post-patch state validation, domain invariants,
+atomic transitions, revision checks, and explicit consequence links before the
+DSL is trusted by save editing or dynamic mechanics.
+
 The State Patch DSL is the only supported way for agents and engine modules to request world-state changes.
 
 AI agents may propose patches. The auditor validates them. The ledger applies and records them.

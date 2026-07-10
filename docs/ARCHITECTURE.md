@@ -1,5 +1,11 @@
 # Architecture
 
+Status: current backend skeleton.
+
+The ledger boundary remains part of the approved architecture. Product modes,
+player projections, save branches, activities, and dynamic mechanics are target
+work defined in `PRODUCT_SPEC.md`, `DYNAMIC_MECHANICS.md`, and `ROADMAP.md`.
+
 This document describes the current backend skeleton.
 
 ## Boundary Rule

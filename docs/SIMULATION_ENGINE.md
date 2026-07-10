@@ -1,5 +1,12 @@
 # Simulation Engine
 
+Status: current prototype implementation.
+
+Four-slot time, faction-wide ticking, and the current event queue prove the
+storage and orchestration path. The target product replaces canonical slots
+with minute-level time and adds tiered personal NPC simulation while retaining
+audited patches and daily settlement. See `PRODUCT_SPEC.md` and `ROADMAP.md`.
+
 The simulation engine owns time and background world pressure.
 
 It is separate from the player action graph so that world movement does not become coupled to player input.

@@ -1,5 +1,13 @@
 # World Generation MVP
 
+Status: prototype fixture only.
+
+Natural-language world generation is deferred from the first playable product.
+The approved product uses one authored contemporary city and university
+district. This generator remains useful for ledger and simulation tests, but it
+must not be expanded into the player new-game flow. See `PRODUCT_SPEC.md` and
+`ROADMAP.md`.
+
 World generation currently means:
 
 ```text

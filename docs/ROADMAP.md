@@ -1,668 +1,707 @@
-# GenWorld Milestone Roadmap
+# GenWorld Development Roadmap
 
-## 0. Project Definition
+Status: active roadmap for the fixed-world life-sandbox product direction.
 
-GenWorld is a natural-language, multi-agent world simulator.
+This roadmap supersedes the earlier world-generation-first plan. The approved
+experience and dynamic-system boundaries are defined in:
 
-The player interacts with the world through free-form language. The backend maintains structured state, runs world simulation rules, coordinates agents through LangGraph, and records auditable state changes.
+- `PRODUCT_SPEC.md`
+- `DYNAMIC_MECHANICS.md`
 
-The project is not an AI novel generator. It is a world engine where AI proposes, the rule layer validates, and the engine commits state.
+Current implementation documents describe the prototype as it exists today.
+When they conflict with the two product documents above, the product documents
+govern future work.
 
-## Guiding Principles
+## Product Target
 
-1. Natural-language interaction, structured backend.
-2. AI can create and propose, but cannot directly mutate core state.
-3. Every important world change must be recorded as an event and a state patch.
-4. World simulation must continue even when the player is not directly touching an entity.
-5. Start with a small playable world before scaling the architecture.
-6. Prefer inspectable local storage first, then introduce infrastructure only when there is a concrete need.
-7. Style distillation is postponed until the simulation loop is stable.
+The first playable GenWorld release is a desktop-web, natural-language life
+sandbox in one authored contemporary city and university district.
 
-## Phase 0: Repository And Environment Baseline
+The player:
+
+- Creates one university-student avatar from a structured draft.
+- Acts through natural language inside a persistent structured world.
+- Uses Idea Mode to found and reform institutions through in-world causality.
+- Uses a separate structured Sandbox Editor to edit the save directly.
+- May save, load, branch, and retry freely.
+- Can eventually create bounded save-local mechanics when existing systems are
+  not expressive enough.
+
+Natural-language world generation is not part of the first playable release.
+
+## Current Prototype Baseline
+
+The repository already proves several useful foundations:
+
+- FastAPI application and Pydantic request/response schemas.
+- SQLite storage for worlds, events, and state patches.
+- Patch DSL validation and append-only patch records.
+- A structured `WorldState` with actors, locations, factions, clocks, facts,
+  and queued events.
+- A local deterministic world seed generator.
+- A local LangGraph action pipeline.
+- Four-slot time advancement.
+- Faction plans, clocks, queued events, event effects, and daily settlement.
+- Core regression tests for the prototype flow.
+
+These are engineering prototypes, not completed player-facing milestones.
+
+Known baseline gaps include:
+
+- A patched state is not fully revalidated before persistence.
+- Repeated investigation can create duplicate fact IDs.
+- Multi-step patch and event transitions are not one atomic unit.
+- Dependencies are not locked and the test client emits a deprecation warning.
+- The local generator is still presented as a product API.
+- The action loop is limited to six hard-coded intent types and fixed effects.
+- Time is too coarse for schedules and life simulation.
+- There is no frontend, save branching, character draft, activity model,
+  personal NPC simulation, Idea Mode, Sandbox Editor, or mechanic runtime.
+
+## Development Rules
+
+1. Build vertical slices. A gameplay milestone is not complete until its API,
+   persistence, player projection, UI, and regression path work together.
+2. Preserve the ledger boundary. Engine, model, and mechanic code may propose
+   changes; only validated transactions commit them.
+3. Keep hidden canonical state separate from player-visible projections.
+4. Reuse generic activities and domain frameworks before generating a new
+   mechanic.
+5. No generated general-purpose code runs in the first playable version.
+6. No milestone expands the world, identity range, or platform scope without a
+   written product decision.
+7. Every irreversible migration includes backup, rollback, and compatibility
+   tests.
+8. A feature that cannot survive save, load, restart, and replay is not done.
+
+## Definition Of Done
+
+A milestone is complete only when:
+
+- Contracts and relevant design decisions are documented.
+- State and API migrations are explicit.
+- Success, rejection, interruption, and recovery paths are tested.
+- Player-visible information does not leak hidden state.
+- Committed effects cite their patch and event records.
+- The feature survives application restart and save reload.
+- The vertical acceptance scenario is reproducible.
+- The full regression suite passes without new warnings owned by the project.
+
+## Milestone 0: Product Contract
+
+Status: COMPLETE
 
 ### Goal
 
-Create a clean local project foundation that can run on the current machine without Docker, PostgreSQL, Redis, or a game engine.
+Replace the generic world-simulator direction with an explicit fixed-world life
+sandbox contract before implementation expands further.
 
-### Current Machine Assumptions
+### Delivered
 
-- Python is available through `py`, currently Python 3.12.1.
-- `python` should not be used because it points to the Windows Store placeholder.
-- Node.js 22 is available.
-- npm and pnpm are available.
-- Git is available.
-- SQLite is available through Python's standard library.
-- Docker, PostgreSQL, Redis, Poetry, and uv are not assumed.
+- Fixed contemporary university setting for the first version.
+- University-student-only starting identity.
+- Action, Idea, and Sandbox Editor mode boundaries.
+- Natural-language action and ambiguity policy.
+- Minute-level, turn-based time direction.
+- Tiered NPC simulation and daily settlement direction.
+- Free save, load, branch, and retry policy.
+- First-version life-system scope.
+- Desktop React client direction and information architecture.
+- MechanicSpec-first dynamic-rule direction.
+- General-purpose scripting deferred behind an evidence gate.
 
-### Recommended Stack
+### Exit Gate
 
-- Python 3.12
-- FastAPI
-- LangGraph
-- Pydantic
-- SQLite through Python `sqlite3`
-- OpenAI SDK or another LLM SDK behind a provider abstraction
-- Simple HTML/JS frontend served by FastAPI
+`PRODUCT_SPEC.md`, `DYNAMIC_MECHANICS.md`, and this roadmap agree on product
+scope and terminology.
 
-### Deliverables
+## Milestone 1: Canonical State Integrity
 
-- Git repository initialized.
-- Python virtual environment created.
-- Minimal dependency file.
-- FastAPI service starts locally.
-- Health-check endpoint works.
-- SQLite database can be created and migrated manually.
+Status: NEXT
 
-### Acceptance Criteria
+### Goal
 
-- Running one command starts the backend.
-- A local browser can open a basic page.
-- A test SQLite database can store and read one world record.
+Make the ledger a trustworthy base for saves, life simulation, editor changes,
+and future generated mechanics.
+
+### Backend Deliverables
+
+- Revalidate and normalize the complete next `WorldState` before persistence.
+- Add domain invariant validation for:
+  - Stable and unique IDs.
+  - Dictionary-key and record-ID agreement.
+  - Valid actor and location references.
+  - Valid schedule and time values.
+  - Clock progress within bounds.
+  - Unique facts, queued events, and active commitments.
+- Reject invalid patches while recording the rejection and preserving state.
+- Define an atomic transition service for a primary patch, derived effects, and
+  associated events.
+- Include explicit patch IDs in all consequence events.
+- Add optimistic world revision checks to prevent lost concurrent updates.
+- Add a schema migration mechanism for SQLite and canonical state.
+- Introduce an application factory so tests can inject isolated settings and a
+  ledger without import-time global coupling.
+- Lock dependency versions and resolve the current TestClient warning.
+- Add formatting, linting, type-checking, and automated test commands.
+
+### Test Deliverables
+
+- Invalid scalar types and constrained values are rejected.
+- Broken references and duplicate IDs are rejected.
+- Duplicate investigation facts are not appended.
+- A derived event failure cannot leave a half-committed parent transition.
+- Concurrent revision conflicts are rejected or retried explicitly.
+- Existing prototype behavior remains covered.
+
+### Acceptance Gate: State Integrity
+
+- Twenty mixed prototype actions complete without invalid state or duplicate
+  canonical IDs.
+- A patch that sets `/time/day` to a string is rejected.
+- Every committed consequence can be traced to a patch.
+- Restarting the application preserves an identical validated state.
 
 ### Explicitly Not In Scope
 
-- PostgreSQL
-- Redis
-- Docker
-- Next.js
-- Vector database
-- Full authentication
-- Multi-user support
+- New player-facing gameplay.
+- Frontend work.
+- LLM integration.
+- Save-local mechanics.
 
-## Phase 1: Core World Ledger
+## Milestone 2: Fixed World And Character Creation
+
+Status: PENDING
 
 ### Goal
 
-Build the structured state foundation before adding complex AI behavior.
+Create the first real player entry flow without generating a world from a
+natural-language premise.
 
-### Core Concepts
+### Content Deliverables
 
-- World
-- Entity
-- Event
-- State patch
-- Mechanic
-- Agent run
-- World snapshot
+- One authored fictional contemporary city and university district.
+- Eight to twelve important authored locations, including housing, campus,
+  classrooms, food, exercise, shopping, and a public social space.
+- Eight to twelve important authored NPCs with identities, schedules, traits,
+  relationships, and starting knowledge.
+- A lightweight background-NPC template that can become persistent after
+  meaningful interaction.
+- A versioned fixed-world content pack with stable IDs.
 
-### Suggested SQLite Tables
+### Backend Deliverables
 
-- `worlds`
-- `world_snapshots`
-- `entities`
-- `events`
-- `state_patches`
-- `mechanics`
-- `agent_runs`
-- `memories`
+- `CharacterDraft` with `user_locked`, `generated`, and `derived` provenance.
+- Identity-prompt parsing restricted to university-student identities.
+- Draft generation, field edit, selective reroll, full reroll, validation, and
+  confirmation APIs.
+- Confirmation creates the canonical avatar and first save snapshot.
+- Existing local world generation remains available only as a test fixture or
+  explicit developer endpoint.
+- Reject identities outside first-version scope with a clear product-level
+  response rather than silently generating another world type.
 
-### Deliverables
+### Frontend Deliverables
 
-- Pydantic schemas for world state.
-- SQLite storage layer.
-- Append-only event log.
-- State patch format.
-- Snapshot save/load.
-- Simple debug endpoint for reading current world state.
+- React, TypeScript, and Vite application scaffold.
+- Dedicated character-creation flow.
+- Structured draft review with source labels.
+- Selective edit and reroll controls.
+- Confirmation and first-save transition.
 
-### Acceptance Criteria
+### Acceptance Gate: New Game
 
-- A world can be created and loaded.
-- A state patch can be applied and recorded.
-- The system can show what changed, when, and why.
-- No AI call is required to test the ledger.
+- A player can enter a constrained identity such as an ordinary university
+  student with modest finances.
+- Player-locked facts survive every reroll.
+- Generated fields can be independently edited or rerolled.
+- Confirmation produces a valid avatar in the authored world.
+- Loading the first snapshot reproduces the same avatar and starting state.
 
 ### Explicitly Not In Scope
 
-- Semantic memory
-- Vector retrieval
-- Large-scale NPC autonomy
-- AI-generated executable code
+- Other professions or age groups.
+- Natural-language world generation.
+- Generated major locations or institutions.
+- Full visual polish.
 
-## Phase 2: World Generation MVP
+## Milestone 3: Scene, Time, Travel, And Activities
+
+Status: PENDING
 
 ### Goal
 
-Turn a natural-language world prompt into a runnable initial world state.
+Make the fixed world explorable through structured scenes and time-consuming
+activities before introducing model-backed free-form planning.
 
-### Inputs
+### Backend Deliverables
 
-Example:
+- Replace canonical four-slot time with day plus minute-of-day.
+- Derive display periods such as morning and evening from canonical time.
+- Add authored location connections, opening hours, and travel duration.
+- Add an `Activity` model with stages, participants, location, duration,
+  progress, interruption policy, and completion state.
+- Implement built-in movement, rest, eat, study, exercise, and wait activities.
+- Advance needs and schedules by elapsed duration rather than one fixed tick.
+- Trigger daily settlement whenever time crosses the day boundary.
+- Expose a player-visible `SceneView` projection without hidden facts.
+- Expose separate debug and editor projections.
+
+### Frontend Deliverables
+
+- Main desktop game shell.
+- Left avatar-status region.
+- Center structured scene, narrative history, visible actors and objects, and
+  suggested affordances.
+- Right contextual tool region with initial schedule and event tabs.
+- Clickable built-in interactions for testing the activity loop.
+
+### Acceptance Gate: One Structured Day
+
+- The avatar can travel from housing to class, eat, study, exercise, and rest.
+- Opening hours and travel time affect feasibility.
+- Activities advance time by different durations.
+- The scene projection changes with time, location, and present actors.
+- Hidden NPC and world state is absent from the player response.
+- Crossing midnight performs one and only one daily settlement.
+
+### Explicitly Not In Scope
+
+- Free-form model-backed actions.
+- Multi-turn dialogue.
+- Idea Mode.
+- Dynamic mechanics.
+
+## Milestone 4: Natural-Language Planning And Checks
+
+Status: PENDING
+
+### Goal
+
+Turn free-form player language into bounded action plans that reuse the fixed
+world and activity systems.
+
+### Backend Deliverables
+
+- A model-provider abstraction with structured-output support and explicit
+  timeout, retry, and failure behavior.
+- `ActionPlan` with intent, goal, targets, approach, tone, inferred details,
+  ordered steps, duration estimates, resources, and stop conditions.
+- Context construction from the player-visible scene and authorized canonical
+  facts.
+- Low-impact default inference and material-ambiguity detection.
+- Compound-action execution until a decision point or blocker.
+- A pluggable `ResolutionCheck` engine with a first tuned `2d6` implementation,
+  skills, difficulty, contextual modifiers, opposed factors, and outcome
+  degrees.
+- Check records linked to committed patches and events.
+- REST command endpoints and SSE progress for model-backed planning and
+  resolution.
+- Basic quick-save and load before checks.
+- A deterministic local planner retained for tests and model outages.
+
+### Frontend Deliverables
+
+- Natural-language Action composer.
+- Visible planning and resolution progress.
+- Focused clarification for material ambiguity.
+- Structured outcome with expandable roll, difficulty, and modifier details.
+- Quick-save and load controls.
+
+### Acceptance Gate: Gym Action
+
+Given an avatar at home, the player can enter:
 
 ```text
-Create a modern city where spiritual energy has returned, corporations and sects fight over supernatural resources, and the player is a newly awakened courier.
+I go to the gym to work out and try to meet a trainer.
 ```
 
-### Generated Outputs
+The system must:
 
-- World premise
-- Core conflict
-- Basic world rules
-- 3 factions
-- 5 to 10 NPCs
-- 8 to 15 locations
-- 3 to 5 world clocks
-- Initial event queue
-- Player starting state
-
-### Deliverables
-
-- `create_world` API.
-- World-generation agent.
-- Structured output schema.
-- Validation and repair pass.
-- Initial world snapshot committed to SQLite.
-
-### Acceptance Criteria
-
-- User can create a world from one natural-language prompt.
-- Generated world contains enough structure to simulate at least 7 in-world days.
-- Invalid AI output is rejected or repaired before commit.
-- Hidden facts are separated from player-visible facts.
+- Select or clarify a valid authored gym.
+- Infer immediate departure and reasonable duration.
+- Plan travel, exercise, and social-contact steps.
+- Avoid rolling for routine travel.
+- Apply condition and skill context to uncertain steps.
+- Preserve NPC agency.
+- Commit time, location, condition, skill, and event changes atomically.
 
 ### Explicitly Not In Scope
 
-- Complex prose style controls
-- Long-term memory retrieval
-- Procedural maps
-- Images or game-engine rendering
+- Creating new locations from the action.
+- Generated rules.
+- Long-running NPC dialogue.
+- Organization founding.
 
-## Phase 3: LangGraph Player Action Loop
+## Milestone 5: Social Interaction And NPC Continuity
+
+Status: PENDING
 
 ### Goal
 
-Make one complete player action run through a controlled multi-agent pipeline.
+Make scene interactions produce persistent relationships, memories, claims,
+promises, and independently motivated NPC reactions.
 
-### LangGraph Flow
+### Backend Deliverables
 
-```text
-load_world_state
--> parse_player_intent
--> build_context_pack
--> resolve_action
--> run_mechanics
--> advance_world
--> audit_state_patches
--> commit_state
--> narrate_result
-```
+- `pending_interaction` state for actions awaiting a player response.
+- `DialogueMove` parsing for claims, tone, promises, concessions, threats,
+  refusals, conditions, and exchanges.
+- Resume, refuse, leave, interrupt, and timeout behavior.
+- Important-NPC schedules, goals, current activities, relationships, and
+  lightweight needs.
+- Relationship evidence and per-person event history.
+- Persistent promises with beneficiary, value, deadline, fulfillment, breach,
+  and consequence state.
+- Tiered NPC update policy for scene, important, persistent, and background
+  actors.
+- NPC reactions derived from traits, knowledge, interests, relationships, and
+  context rather than model narration alone.
 
-### Agents
+### Frontend Deliverables
 
-- Intent Parser
-- Simulation Director
-- State Auditor
-- Narrator
+- Pending-interaction presentation inside the center scene.
+- Free-text response, refuse, leave, and interrupt controls.
+- Relationship browser.
+- Per-NPC event and promise history.
+- Qualitative NPC attitude display without hidden-state leakage.
 
-### Deliverables
+### Acceptance Gate: Conditional Recruitment
 
-- LangGraph graph definition.
-- Pydantic graph state.
-- Natural-language action API.
-- Deterministic dice/random helper with seed support.
-- State patch validation.
-- Basic narrative output.
-
-### Acceptance Criteria
-
-- Player can submit an action in natural language.
-- The system parses intent into structured form.
-- The action produces events and state patches.
-- State Auditor can reject illegal patches.
-- Narrator only describes committed facts.
-- The system can run at least 20 consecutive player actions without losing world state.
+- An NPC asks a material question during a recruitment action.
+- A sincere promise improves the immediate check for an explainable reason.
+- The promise becomes a future obligation rather than a temporary modifier.
+- Fulfillment improves trust; breach damages trust and creates a remembered
+  event.
+- Reloading the save preserves the interaction, obligation, and NPC memory.
 
 ### Explicitly Not In Scope
 
-- One agent per NPC.
-- One agent per faction running constantly.
-- Advanced memory retrieval.
-- Style distillation.
+- One LLM call per NPC per turn.
+- Omniscient relationship values in the normal UI.
+- Generated organizations.
 
-## Phase 4: World Simulation Loop
+## Milestone 6: University Life And Seven-Day Simulation
+
+Status: PENDING
 
 ### Goal
 
-Make the world move independently from the player.
+Complete the first coherent life-sandbox loop before adding system creation.
 
-### Simulation Features
+### Backend Deliverables
 
-- Time slots within a day.
-- Daily settlement.
-- Faction plans.
-- NPC lightweight plans.
-- World clocks.
-- Triggered events.
-- Delayed consequences.
+- Energy, hunger, stress, and mood rules driven by elapsed time and activities.
+- Skills that influence checks and improve through relevant practice.
+- Class schedules, attendance, coursework, study, and academic performance.
+- Lightweight money, routine costs, and limited income opportunities.
+- Important-NPC daily plans and background catch-up.
+- Daily summaries linked to source events.
+- Event scheduling that distinguishes direct immediate consequences from
+  background settlement.
+- Balance limits that prevent routine actions from producing runaway values.
 
-### Suggested Time Model
+### Frontend Deliverables
 
-- Morning
-- Afternoon
-- Evening
-- Night
+- Legible needs, mood, skills, schedule, money, and current activity.
+- Daily summary and next-day schedule.
+- Visible causes for major changes without exposing hidden simulation state.
 
-### Deliverables
+### Acceptance Gate: Seven-Day Life
 
-- Time advancement engine.
-- World clock engine.
-- Faction plan schema.
-- Background event generator.
-- Daily settlement endpoint.
-- Debug view showing active clocks and pending events.
+One avatar completes seven in-world days with at least:
 
-### Acceptance Criteria
+- Five attended or missed scheduled commitments.
+- Several exercise, study, rest, travel, and social activities.
+- Three important NPCs following distinct schedules.
+- One fulfilled and one breached or renegotiated promise.
+- Skill progression that materially affects a later check.
+- A financial tradeoff.
+- A background event with traceable causes.
 
-- A world can advance one time slot without player action.
-- A world can advance one full day.
-- Faction clocks can trigger events.
-- Player actions can speed up, slow down, or redirect world clocks.
-- Generated background events have visible causes in the event log.
+At the end, the state validates, the event history explains major changes, and
+different player choices produce a materially different week.
 
 ### Explicitly Not In Scope
 
-- Full economic simulation
-- Large-scale battle simulation
-- Global map simulation
-- Persistent autonomous agent processes
+- Other careers.
+- Full inventory or housing simulation.
+- Idea Mode and generated mechanics.
 
-## Phase 5: Mechanic DSL And AI-Created Local Rules
+## Milestone 7: Save Branches And Sandbox Editor
+
+Status: PENDING
 
 ### Goal
 
-Allow AI to create world-specific mechanics within a controlled rule format.
+Give the player explicit control over saves and a safe, visual way to edit the
+current save without confusing editor authority with avatar agency.
 
-### Rule
+### Backend Deliverables
 
-AI may create mechanics, but the engine executes them.
+- Named saves, quick saves, snapshots, parent-branch metadata, and load APIs.
+- Transaction-safe snapshot points for activities and pending interactions.
+- New roll attempts after loading a pre-check snapshot.
+- Editor-only canonical projections and mutation endpoints.
+- Structured editor operations that still pass schema and invariant validation.
+- Diff preview, validation report, atomic commit, undo, and rollback.
+- Editor events separated from diegetic world events while remaining auditable.
 
-AI should not directly execute arbitrary Python code in this phase.
+### Frontend Deliverables
 
-### Example Mechanic
+- Save browser and branch history.
+- Full-screen Sandbox Editor.
+- Entity tree and structured forms for actors, locations, relationships,
+  schedules, resources, activities, events, and mechanic records.
+- Diff and validation preview.
+- Undo and snapshot recovery.
+- Clear visual separation from Action and Idea modes.
 
-```yaml
-mechanic_id: spirit_pollution
-trigger:
-  when: player_uses_spirit_power
-  condition: location.pollution_level > 40
-effect:
-  - op: increase
-    path: player.status.contamination
-    value: 5
-limits:
-  max_increase_per_turn: 12
-  cannot_directly_kill: true
-```
+### Acceptance Gate: Edit And Recover
 
-### Deliverables
-
-- Mechanic schema.
-- Mechanic validator.
-- Mechanic interpreter.
-- Rules Engineer agent.
-- Mechanic registry.
-- Test cases for each generated mechanic.
-
-### Acceptance Criteria
-
-- AI can propose a new mechanic.
-- The mechanic is validated before registration.
-- The mechanic can produce legal state patches.
-- Invalid mechanics are rejected with clear reasons.
-- Mechanics are versioned and can be disabled.
+- A player saves before a check, loads, and receives a new attempt on a branch.
+- An editor change updates a relationship and schedule without advancing time.
+- An invalid editor change is rejected before commit.
+- Undo restores the exact prior snapshot.
+- Normal game views still hide canonical secrets after editor use.
 
 ### Explicitly Not In Scope
 
-- Arbitrary AI-written Python execution.
-- File, network, or database access from generated mechanics.
-- Permanent world-rule rewrites without explicit approval.
+- Natural-language editor commands.
+- Editing application or database schemas.
+- Editing runtime security policy.
 
-## Phase 6: Local Memory And Retrieval
+## Milestone 8: Idea Mode And Organizations
+
+Status: PENDING
 
 ### Goal
 
-Improve continuity without introducing a vector database yet.
+Let the avatar propose, found, operate, and reform an organization while world
+authority, resources, promises, and NPC agency remain meaningful.
 
-### Storage Choice
+### Backend Deliverables
 
-Use SQLite `FTS5` for local full-text search over events, memories, NPC notes, and world facts.
+- `IdeaDraft` and explicit Action/Idea mode routing.
+- Generic project and organization frameworks.
+- Organization identity, doctrine, policies, governance, roles, membership,
+  resources, activities, schedules, benefits, promises, and lifecycle.
+- Founding projects with prerequisites and progress.
+- Recruitment actions integrated with social resolution.
+- Reform proposals with authority checks, voting, affected-party analysis, and
+  versioned rules.
+- Member acceptance, resistance, exit, and splinter-organization behavior.
+- Cancellation that affects future schedules without deleting history.
 
-### Deliverables
+### Frontend Deliverables
 
-- Memory record schema.
-- Event summarization after each day.
-- FTS5 index.
-- Context-pack retrieval by keyword/entity/time.
-- Memory compaction rules.
+- Action/Idea segmented composer control.
+- Structured idea-draft review and revision.
+- Founding-project and organization views.
+- Governance, membership, obligations, activities, and reform views.
 
-### Acceptance Criteria
+### Acceptance Gate: Found, Recruit, Reform
 
-- The system can retrieve relevant past events by entity and keyword.
-- Context packs include old facts without loading the entire world history.
-- Daily summaries reduce prompt size.
-- Retrieval results cite event IDs or memory IDs.
+The player can:
 
-### Explicitly Not In Scope
+1. Propose a vegetarian environmental religion.
+2. Confirm a draft and create a founding project.
+3. Recruit in a supermarket.
+4. Make a promise of free vegetables during a pending interaction.
+5. Build membership through repeated in-world actions.
+6. Propose a reversal to a meat-centered doctrine.
+7. Apply the governance process.
+8. Observe members accept, leave, resist, or split.
 
-- Vector database
-- Embedding model dependency
-- Cross-world semantic search
-
-## Phase 7: Introduce Vector Retrieval
-
-### When To Start This Phase
-
-Do not introduce a vector database just because it is fashionable.
-
-Start this phase when at least two of the following are true:
-
-- A single world has more than 1,000 meaningful events or memory records.
-- Keyword search misses important semantically related memories.
-- NPC continuity depends on fuzzy memory retrieval.
-- The context pack routinely omits relevant old facts.
-- Multiple worlds need semantic search across similar concepts.
-
-### Preferred First Choice
-
-Use PostgreSQL with `pgvector` after the project has already moved to PostgreSQL.
-
-### Alternative Local Choice
-
-Use a lightweight local vector store only if PostgreSQL migration is intentionally postponed.
-
-### Deliverables
-
-- Embedding provider abstraction.
-- Memory embedding job.
-- Vector search endpoint.
-- Hybrid retrieval: entity filters + time filters + vector similarity.
-- Retrieval evaluation set.
-
-### Acceptance Criteria
-
-- Vector retrieval improves context relevance over FTS5 on a small evaluation set.
-- Retrieved memories are traceable back to stored event IDs.
-- The system can explain why a memory was included in a context pack.
-- Vector search is used for memory retrieval, not as the source of truth.
+Past events, public claims, paid costs, and unfulfilled promises must survive
+the reform.
 
 ### Explicitly Not In Scope
 
-- Replacing the event log.
-- Replacing structured world state.
-- Letting vector memory override current canonical state.
+- A separate generated code module for every organization.
+- Instant institution creation on draft confirmation.
+- Direct assignment of member beliefs.
 
-## Phase 8: PostgreSQL Migration
+## Milestone 9: MechanicSpec Runtime
 
-### When To Start This Phase
-
-Start after the simulation loop is fun and stable, not before.
-
-Good triggers:
-
-- SQLite write concurrency becomes painful.
-- Multiple users or multiple worlds run concurrently.
-- Debugging JSON queries in SQLite becomes limiting.
-- Vector retrieval is ready and `pgvector` is preferred.
-- Deployment needs a real database server.
-
-### Deliverables
-
-- PostgreSQL schema.
-- Migration script from SQLite.
-- JSONB-based world state storage.
-- Optional `pgvector` extension.
-- Database backup and restore workflow.
-
-### Acceptance Criteria
-
-- Existing worlds migrate without data loss.
-- Event logs and state patches remain auditable.
-- Performance is at least equal to SQLite for normal local usage.
-- The app can run against either SQLite or PostgreSQL during migration.
-
-### Explicitly Not In Scope
-
-- Premature distributed systems design.
-- Sharding.
-- Event streaming infrastructure.
-
-## Phase 9: Better Web Client
+Status: PENDING
 
 ### Goal
 
-Replace the simple HTML/JS interface only after the backend loop is useful.
+Provide a bounded, versioned save-local rule format before allowing a model to
+generate mechanics.
 
-### Candidate Stack
+### Backend Deliverables
 
-- Next.js
-- React
-- TypeScript
-- Tailwind CSS
-- shadcn/ui
-- TanStack Query
+- Versioned `MechanicSpec` schema and canonical storage.
+- Safe parsed conditions and formulas.
+- Private namespaced mechanic state.
+- Registered affordances, activities, state machines, triggers, checks,
+  schedules, patch templates, and event templates.
+- Explicit read and patch capabilities.
+- Runtime execution, memory, output, and scheduling budgets.
+- Draft, validating, simulated, active, suspended, superseded, and archived
+  lifecycle states.
+- Validation against a cloned snapshot.
+- Engine-owned tests and mechanic-provided tests.
+- Transaction rollback, automatic suspension, and inspectable failures.
+- Version migration and host API compatibility handling.
+- Save, load, export, import, and editor support.
 
-### Deliverables
+### Authored Reference Mechanics
 
-- World creation screen.
-- Player action console.
-- Story timeline.
-- Debug state inspector.
-- Event log view.
-- Mechanic registry view.
-- Clock and faction status view.
+At least two mechanics are written manually through the same public contract:
 
-### Acceptance Criteria
+- A fourteen-day night-running challenge with deposits, attendance, penalties,
+  and prize settlement.
+- A member-credit and budget-voting extension for an organization.
 
-- The UI makes the world easier to inspect and play.
-- The user can continue a world without touching backend tools.
-- Debug views expose state changes clearly.
+These examples must prove repeated actions, private state, scheduled work,
+multi-actor effects, reform, and archival.
 
-### Explicitly Not In Scope
+### Acceptance Gate: Manual Dynamic Rules
 
-- Heavy animation
-- Game-engine rendering
-- Marketplace/social features
-
-## Phase 10: Multi-Agent Expansion
-
-### Goal
-
-Introduce more specialized agents without losing central state control.
-
-### Add Only As Needed
-
-- Faction Agent
-- NPC Agent
-- Location Agent
-- Questline Agent
-- Mechanic Review Agent
-
-### Rule
-
-Agents do not own truth. The ledger owns truth.
-
-Agents receive context packs and return proposals.
-
-### Deliverables
-
-- Agent role registry.
-- Context-pack builder per agent type.
-- Agent output schemas.
-- Agent run tracing.
-- Conflict resolution strategy.
-
-### Acceptance Criteria
-
-- Adding an agent improves a measurable workflow.
-- Agent outputs remain structured.
-- Conflicting proposals are resolved by the Simulation Director or core engine.
-- No agent directly commits state.
+- Both mechanics run without application-specific branching in the engine.
+- Capability violations are rejected.
+- Infinite or excessive work is terminated and rolled back.
+- Save and reload preserve code-independent specifications and private state.
+- A version upgrade migrates an active mechanic without losing history.
+- Disabling one save-local mechanic does not affect another save.
 
 ### Explicitly Not In Scope
 
-- Always-on NPC agents for every character.
-- Agent group chat as the primary architecture.
-- Unbounded agent recursion.
+- Model-generated mechanics.
+- Python, JavaScript, Lua, or WebAssembly execution.
+- Runtime-defined database schemas.
 
-## Phase 11: Safe AI-Written Functions
+## Milestone 10: Model-Generated Save Mechanics
+
+Status: PENDING
 
 ### Goal
 
-Optionally allow AI to generate executable functions for local world mechanics.
+Deliver the core differentiator: a player idea that existing systems cannot
+express can become a validated, save-local mechanic.
 
-### Entry Criteria
+### Backend Deliverables
 
-Only begin this phase after the DSL mechanic system has proven insufficient.
+- Classification through the full resolution ladder before generation.
+- Structured model generation of `MechanicSpec`, explanation, tests, and
+  migration policy.
+- Static validation and capability minimization.
+- Clone-world simulation with success and adversarial cases.
+- Activation only after all engine-owned gates pass.
+- Runtime monitoring, automatic suspension, rollback, and repair proposal.
+- Reform through successor specification versions.
+- Provenance from player idea to generated spec, checks, patches, and events.
 
-Good reasons:
+### Frontend Deliverables
 
-- Some mechanics are too awkward to express in DSL.
-- Mechanics need reusable calculations.
-- The system needs richer condition logic.
+- Clear progress while a mechanic is proposed, validated, simulated, and
+  activated.
+- Human-readable rule summary and requested capabilities.
+- Mechanic history, versions, tests, failures, suspend, rollback, and archive.
+- Sandbox Editor support for structured mechanic inspection and revision.
 
-### Required Safety Constraints
+### Acceptance Gate: New Persistent System
 
-- Pure functions only.
-- No file access.
-- No network access.
-- No direct database access.
-- Strict timeouts.
-- Strict input and output schemas.
-- Deterministic seeded randomness.
-- Static analysis before registration.
-- Unit tests before activation.
-- Only state patches as output.
+A player proposes behavior that the base organization framework and authored
+mechanics cannot express. The system must:
 
-### Deliverables
-
-- Function sandbox.
-- Function permission model.
-- Generated function test harness.
-- Versioned function registry.
-- Rollback and disable controls.
-
-### Acceptance Criteria
-
-- A generated function can be tested before use.
-- A generated function cannot mutate state directly.
-- A generated function cannot access external resources.
-- Bad functions fail safely.
+- Explain why a new mechanic is required.
+- Generate a bounded specification rather than application source.
+- Reject unsafe or invalid variants without changing the save.
+- Activate a valid variant.
+- Add persistent state, interactions, and scheduled settlement.
+- Survive save, load, restart, and version reform.
+- Affect only the current save.
 
 ### Explicitly Not In Scope
 
-- General-purpose plugin execution.
-- User-uploaded arbitrary code.
-- Agent self-modifying core engine code.
+- General-purpose generated source code.
+- Silent capability expansion.
+- Automatic modification of base mechanics.
 
-## Phase 12: Style Distillation Layer
+## Milestone 11: First Playable Alpha
 
-### Goal
-
-Add controlled prose style after the simulation is already stable.
-
-### Why This Is Late
-
-Style is valuable, but it must not decide facts. If added too early, it can hide simulation bugs behind pretty prose.
-
-### Deliverables
-
-- Style profile schema.
-- Style extraction from user-provided samples.
-- Narrator style controls.
-- Safety boundary between committed facts and prose rendering.
-
-### Acceptance Criteria
-
-- Same committed event can be rendered in different styles.
-- Style layer cannot change world state.
-- Style output does not invent uncommitted facts.
-
-## Phase 13: Multi-User And Deployment
+Status: PENDING
 
 ### Goal
 
-Prepare the system for real users after the single-user world loop is proven.
+Stabilize all vertical slices into a coherent local alpha rather than adding
+new domains.
 
 ### Deliverables
 
-- User accounts.
-- World ownership.
-- Save slots.
-- Deployment configuration.
-- Background job system.
-- Database backups.
-- Rate limits and model-cost tracking.
+- End-to-end onboarding and recovery from model, validation, and runtime errors.
+- Performance budgets for action planning, settlement, saves, and mechanics.
+- UI loading, empty, interrupted, rejected, and recovery states.
+- Accessibility and keyboard navigation for primary workflows.
+- Save migration and backup tests across application versions.
+- Thirty-day continuity and event-log pressure tests.
+- Structured playtest instrumentation without hidden-state leakage.
+- Documentation for setup, saves, editor recovery, and known scope limits.
 
-### Likely Added Infrastructure
+### Acceptance Gates
 
-- PostgreSQL
-- Redis
-- Background worker
-- Containerized deployment
+- A new player can create an avatar and complete a week without developer tools.
+- Thirty in-world days complete without state corruption or unbounded queues.
+- At least three important NPC relationships remain causally understandable.
+- One organization survives founding, operation, reform, and a member split.
+- One generated mechanic survives a version migration.
+- Save branches, quick reload, editor undo, and recovery all preserve integrity.
+- Normal play never requires direct JSON editing.
 
-### Acceptance Criteria
+## General Script Runtime Research Gate
 
-- Multiple users can run worlds independently.
-- Long-running jobs do not block normal requests.
-- Costs and token usage are visible.
-- Worlds can be backed up and restored.
+Lua, QuickJS, or WebAssembly is not a scheduled product milestone.
 
-## Progress Gates
+Research begins only when all of the following are true:
 
-Use these gates to avoid premature complexity.
+- Milestone 10 is complete.
+- At least three desirable mechanics cannot be expressed cleanly in
+  `MechanicSpec`.
+- Expanding the structured representation would make it materially less safe or
+  understandable.
+- Save migration and capability enforcement are already proven.
+- A test corpus exists for containment, determinism, timeouts, memory limits,
+  host API compatibility, and rollback.
 
-### Gate A: First Playable Loop
+Lua is the preferred first candidate. QuickJS is the secondary candidate.
+Python is not eligible for in-process untrusted mechanic execution.
 
-Required before adding advanced UI or vector memory.
+## Deferred Backlog
 
-- Create world.
-- Submit player action.
-- Resolve result.
-- Commit state.
-- Narrate result.
-- Continue for 20 actions.
+The following are intentionally not placed on the active roadmap:
 
-### Gate B: Seven-Day Simulation
+- Natural-language world generation.
+- Multiple world genres or cities.
+- Non-student starting identities.
+- Multiple controllable avatars or households.
+- Full professions outside the university slice.
+- Housing construction and detailed inventory simulation.
+- Real-time background simulation.
+- Mobile-first client.
+- Multiplayer, accounts, and deployment architecture.
+- PostgreSQL, vector retrieval, and distributed infrastructure.
+- AI-written application source code.
 
-Required before adding PostgreSQL or vector retrieval.
+Items enter the roadmap only after the fixed-world alpha provides evidence that
+they solve a real player or scale problem.
 
-- One world runs for 7 in-world days.
-- At least 3 factions act.
-- World clocks trigger at least 2 events.
-- Event log explains major changes.
+## Immediate Next Work
 
-### Gate C: Ten-Day Continuity Test
+Start Milestone 1 only.
 
-Required before style distillation or AI-written functions.
+The first implementation sequence is:
 
-- One world runs for 10 in-world days.
-- NPCs remember relevant prior events.
-- Contradictions are detected or avoided.
-- Player actions have delayed consequences.
+1. Add post-patch full-state validation and domain invariants.
+2. Fix duplicate canonical IDs.
+3. Define atomic transition and event-linking behavior.
+4. Add optimistic revisions and migration scaffolding.
+5. Refactor application construction for isolated tests.
+6. Lock dependencies and clean the test baseline.
+7. Re-run the twenty-action integrity gate.
 
-### Gate D: Memory Pressure Test
-
-Required before vector database.
-
-- More than 1,000 meaningful event or memory records.
-- FTS5 retrieval misses relevant semantic matches.
-- Context pack quality can be measured.
-
-## Current Recommended Next Step
-
-Current status:
-
-- Phase 0 repository and environment baseline: complete.
-- Phase 1 core world ledger: complete for the local MVP.
-- Phase 2 world generation MVP: local deterministic generator complete; LLM generation is not connected yet.
-- Phase 3 LangGraph player action loop: basic local loop complete.
-- Phase 4 world simulation loop: in progress. Time advancement, daily settlement, faction plans, event queue triggering, delayed plan follow-ups, and narrow queued-event effects are implemented.
-
-Recommended next work:
-
-1. Run Gate A: continue one generated world for 20 player actions and fix any state inconsistency.
-2. Run Gate B: simulate one world for 7 in-world days and verify that faction plans, clocks, triggered events, and event effects create readable causes in the event log.
-3. Add a small debug endpoint or view for clocks, faction plans, and pending queued events if manual inspection becomes painful.
-4. Only after Gate A and Gate B are stable, start Phase 5 mechanic DSL.
-
-Do not connect LLM generation, vector retrieval, or a larger frontend until the local world loop can survive repeated play without hidden state contradictions.
+Do not start the frontend, fixed-world content, or model integration until the
+Milestone 1 state-integrity gate passes.

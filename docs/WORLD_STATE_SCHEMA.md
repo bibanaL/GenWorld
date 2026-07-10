@@ -1,5 +1,13 @@
 # WorldState v1
 
+Status: current prototype schema.
+
+This schema remains the canonical format for the existing backend, but it is
+not the final life-sandbox schema. Character drafts, minute-level time,
+activities, schedules, promises, save-local mechanics, and view projections
+will be introduced through explicit migrations in `ROADMAP.md`. See
+`PRODUCT_SPEC.md` for the target domain boundaries.
+
 WorldState v1 keeps the top-level structure small and stable while allowing each domain to grow internally.
 
 The player should never interact with this structure directly. It is the backend ledger format used by the simulator, agents, auditor, and future world generator.

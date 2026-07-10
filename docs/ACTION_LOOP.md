@@ -1,5 +1,12 @@
 # Player Action Loop
 
+Status: current prototype implementation.
+
+The six local intent types and fixed one-step outcomes are scaffolding, not the
+target action contract. The approved direction introduces minute-level time,
+`ActionPlan`, multi-step `Activity`, pending interaction, and auditable
+resolution checks. See `PRODUCT_SPEC.md` and `ROADMAP.md`.
+
 The first player action loop is a local LangGraph workflow.
 
 It is intentionally simple. Its job is to prove that a natural-language action can move through a controlled pipeline and produce audited world-state changes.
